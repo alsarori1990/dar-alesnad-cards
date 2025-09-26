@@ -1,4 +1,40 @@
+
 import React, { useState, useEffect, useRef } from 'react';
+
+// FIX: Declare firebase as a global variable. This is necessary when the Firebase SDK is
+// included via a <script> tag in the HTML, which makes it available globally.
+// This resolves the "Cannot find name 'firebase'" errors.
+declare const firebase: any;
+
+// --- Firebase Configuration ---
+// The user's actual Firebase config keys have been inserted here.
+const firebaseConfig: {
+  apiKey?: string;
+  authDomain?: string;
+  projectId?: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId?: string;
+  measurementId?: string;
+} = {
+  apiKey: "AIzaSyCWB7sfDGxxAbdMp_7UK8AN3yhkHgxT1JM",
+  authDomain: "dar-alesnad-cards-app.firebaseapp.com",
+  projectId: "dar-alesnad-cards-app",
+  storageBucket: "dar-alesnad-cards-app.firebasestorage.app",
+  messagingSenderId: "883220651145",
+  appId: "1:883220651145:web:2e0ede83462d3ef06c3a58",
+  measurementId: "G-HXVRST5BM7"
+};
+
+
+// Initialize Firebase
+if (firebaseConfig.apiKey) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
+const templatesCollection = db.collection('templates');
+const usersCollection = db.collection('users');
+
 
 // --- DATA TYPES ---
 interface TextPlaceholder {
@@ -14,36 +50,30 @@ interface TextPlaceholder {
 }
 
 interface Template {
-    id: string;
+    id: string; // Firestore document ID
     name: string;
     imageUrl: string;
     placeholders: TextPlaceholder[];
 }
 
 interface User {
+    id: string; // Firestore document ID
     username: string;
     password: string;
     role: 'admin' | 'super-admin';
 }
 
-
-// --- ICONS ---
+// --- ICONS (unchanged) ---
 const DownloadIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>;
 const AdminIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-1.007 1.11-1.226l.554-.221c.64-.256 1.355.064 1.688.69l.334.668c.252.502.734.836 1.296.932l.62.103c.637.106 1.118.67 1.118 1.303v.113c0 .542-.223 1.057-.62 1.456l-.398.398c-.41.41-.62 1.003-.544 1.59l.096.71c.083.612-.216 1.206-.744 1.52l-.528.318c-.53.32-1.18.21-1.624-.264l-.442-.442a1.875 1.875 0 0 0-2.652 0l-.442.442c-.444.474-1.094.584-1.624.264l-.528-.318c-.528-.314-.828-.908-.744-1.52l.096-.71c.076-.587-.134-1.18-.544-1.59l-.398-.398c-.398-.399-.62-.914-.62-1.456v-.113c0-.633.48-1.197 1.118-1.303l.62-.103c.562-.095 1.044-.43 1.296-.932l.334-.668c.333-.626 1.048-.946 1.688-.69l.554.221z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" /></svg>;
 const PlusIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>;
-const TrashIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 4.811 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.124-2.033-2.124H8.033C6.91 2.75 6 3.694 6 4.874v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>;
+const TrashIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.124-2.033-2.124H8.033C6.91 2.75 6 3.694 6 4.874v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>;
 const EditIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>;
 const LogoutIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" /></svg>;
 const BackIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>;
 const KeyIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.75 9.75c0-1.381 1.119-2.5 2.5-2.5s2.5 1.119 2.5 2.5-1.119 2.5-2.5 2.5-2.5-1.119-2.5-2.5Zm0 0h-2.25m5 0h2.25" /></svg>;
 const UsersIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-4.663M12 12.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Z" /></svg>;
 const TemplateIcon: React.FC<{ className?: string }> = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>;
-
-
-// --- CONSTANTS ---
-const TEMPLATES_STORAGE_KEY = 'darAlesnadTemplates';
-const USERS_STORAGE_KEY = 'darAlesnadUsers';
-const DEFAULT_SUPER_ADMIN: User = { username: 'admin', password: 'admin', role: 'super-admin' };
 
 
 // --- HELPER FUNCTIONS ---
@@ -56,7 +86,7 @@ const fileToBase64 = (file: File): Promise<string> =>
     });
 
 // --- USER VIEW COMPONENT ---
-const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = ({ templates, onAdminClick }) => {
+const UserView: React.FC<{ templates: Template[], onAdminClick: () => void, isLoading: boolean }> = ({ templates, onAdminClick, isLoading }) => {
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const [userInputs, setUserInputs] = useState<{ [key: string]: string }>({});
     const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
@@ -78,7 +108,7 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
                 setLoadedImage(null);
             }
         }
-    }, [selectedTemplate?.id]); // Use template ID to ensure re-trigger
+    }, [selectedTemplate?.id]);
 
     // Effect to draw canvas when image is loaded or user inputs change
     useEffect(() => {
@@ -94,16 +124,13 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
                 return;
             }
              
-            // Collect all unique fonts used in the template
             const fontsToLoad = [...new Set(selectedTemplate.placeholders.map(p => `${p.fontWeight} 10px ${p.fontFamily}`))];
 
-            // Wait for all fonts to be loaded
             try {
                  await Promise.all(fontsToLoad.map(font => document.fonts.load(font)));
             } catch (err) {
                 console.error('Error loading fonts:', err);
             }
-
 
             canvas.width = loadedImage.naturalWidth;
             canvas.height = loadedImage.naturalHeight;
@@ -114,9 +141,8 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
                 ctx.fillStyle = p.color;
                 ctx.font = `${p.fontWeight} ${canvas.width * (p.fontSize / 100)}px ${p.fontFamily}`;
                 ctx.textAlign = p.textAlign;
-                ctx.textBaseline = 'middle'; // Crucial for vertical alignment consistency
+                ctx.textBaseline = 'middle';
 
-                // Mimic CSS text-shadow for better readability
                 ctx.shadowColor = 'rgba(0,0,0,0.5)';
                 ctx.shadowBlur = 5;
                 ctx.shadowOffsetX = 0;
@@ -129,7 +155,6 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
                 );
             });
             
-            // Reset shadow for any future drawings
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
             ctx.shadowOffsetX = 0;
@@ -222,6 +247,8 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
                 <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">اختر القالب المناسب، أضف اسمك، وشارك التهنئة مع زملائك!</p>
             </header>
             <main className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pb-16">
+                {isLoading && <p className="text-center col-span-full">جاري تحميل القوالب...</p>}
+                {!isLoading && templates.length === 0 && <p className="text-center col-span-full">لا توجد قوالب لعرضها حالياً.</p>}
                 {templates.map(template => (
                     <div key={template.id} onClick={() => handleSelectTemplate(template)} className="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200/80 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-slate-300/60 hover:-translate-y-2">
                         <div className="aspect-video overflow-hidden">
@@ -246,7 +273,7 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
 // --- PASSWORD CHANGE COMPONENT ---
 const PasswordChangeForm: React.FC<{
     currentUser: User;
-    onPasswordChange: (newPassword: string) => void;
+    onPasswordChange: (newPassword: string) => Promise<void>;
     onCancel: () => void;
 }> = ({ currentUser, onPasswordChange, onCancel }) => {
     const [oldPassword, setOldPassword] = useState('');
@@ -254,8 +281,9 @@ const PasswordChangeForm: React.FC<{
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setSuccess('');
@@ -273,7 +301,10 @@ const PasswordChangeForm: React.FC<{
             return;
         }
         
-        onPasswordChange(newPassword);
+        setLoading(true);
+        await onPasswordChange(newPassword);
+        setLoading(false);
+
         setSuccess('تم تغيير كلمة المرور بنجاح!');
         setOldPassword('');
         setNewPassword('');
@@ -291,7 +322,7 @@ const PasswordChangeForm: React.FC<{
                 {error && <p className="text-red-500 text-sm">{error}</p>}
                 {success && <p className="text-green-600 text-sm">{success}</p>}
                 <div className="flex gap-4 pt-2">
-                    <button type="submit" className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition">حفظ</button>
+                    <button type="submit" disabled={loading} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:bg-slate-400">{loading ? 'جاري الحفظ...' : 'حفظ'}</button>
                     <button type="button" onClick={onCancel} className="flex-1 bg-slate-200 text-slate-800 px-4 py-2 rounded-lg font-semibold hover:bg-slate-300 transition">إلغاء</button>
                 </div>
             </form>
@@ -300,12 +331,13 @@ const PasswordChangeForm: React.FC<{
 };
 
 // --- USER MANAGEMENT COMPONENT ---
-const UserManagement: React.FC<{ users: User[], setUsers: (users: User[]) => void }> = ({ users, setUsers }) => {
+const UserManagement: React.FC<{ users: User[] }> = ({ users }) => {
     const [newUsername, setNewUsername] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleAddUser = (e: React.FormEvent) => {
+    const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         if (newUsername.trim().length < 3 || newPassword.trim().length < 4) {
@@ -316,15 +348,17 @@ const UserManagement: React.FC<{ users: User[], setUsers: (users: User[]) => voi
             setError('اسم المستخدم هذا موجود بالفعل.');
             return;
         }
-        const newUser: User = { username: newUsername.trim(), password: newPassword.trim(), role: 'admin' };
-        setUsers([...users, newUser]);
+        const newUser = { username: newUsername.trim(), password: newPassword.trim(), role: 'admin' };
+        setLoading(true);
+        await usersCollection.add(newUser);
+        setLoading(false);
         setNewUsername('');
         setNewPassword('');
     };
 
-    const handleDeleteUser = (username: string) => {
+    const handleDeleteUser = async (userId: string, username: string) => {
         if (window.confirm(`هل أنت متأكد من حذف المستخدم '${username}'؟`)) {
-            setUsers(users.filter(u => u.username !== username));
+            await usersCollection.doc(userId).delete();
         }
     };
 
@@ -341,7 +375,7 @@ const UserManagement: React.FC<{ users: User[], setUsers: (users: User[]) => voi
                         <label className="block text-sm font-medium text-slate-700 mb-1">كلمة المرور</label>
                         <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500 transition" />
                     </div>
-                    <button type="submit" className="sm:col-span-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition h-fit">إضافة مسؤول</button>
+                    <button type="submit" disabled={loading} className="sm:col-span-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition h-fit disabled:bg-slate-400">{loading ? 'جاري الإضافة...' : 'إضافة مسؤول'}</button>
                 </form>
                 {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
             </div>
@@ -350,7 +384,7 @@ const UserManagement: React.FC<{ users: User[], setUsers: (users: User[]) => voi
                  <h3 className="text-2xl font-bold tracking-tight p-6 border-b border-slate-200">المسؤولون الحاليون</h3>
                 <ul className="divide-y divide-slate-200">
                     {users.map(user => (
-                        <li key={user.username} className="p-4 flex flex-wrap items-center justify-between gap-4">
+                        <li key={user.id} className="p-4 flex flex-wrap items-center justify-between gap-4">
                             <div>
                                 <p className="font-semibold text-lg text-slate-800">{user.username}</p>
                                 <p className={`text-sm font-semibold ${user.role === 'super-admin' ? 'text-indigo-600' : 'text-slate-500'}`}>
@@ -358,7 +392,7 @@ const UserManagement: React.FC<{ users: User[], setUsers: (users: User[]) => voi
                                 </p>
                             </div>
                             {user.role !== 'super-admin' && (
-                                <button onClick={() => handleDeleteUser(user.username)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-red-100 transition-all"><TrashIcon className="w-6 h-6"/></button>
+                                <button onClick={() => handleDeleteUser(user.id, user.username)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-red-100 transition-all"><TrashIcon className="w-6 h-6"/></button>
                             )}
                         </li>
                     ))}
@@ -373,40 +407,42 @@ const UserManagement: React.FC<{ users: User[], setUsers: (users: User[]) => voi
 const AdminView: React.FC<{ 
     loggedInUser: User;
     templates: Template[];
-    setTemplates: (templates: Template[]) => void;
     users: User[];
-    setUsers: (users: User[]) => void;
     onLogout: () => void;
-}> = ({ loggedInUser, templates, setTemplates, users, setUsers, onLogout }) => {
+}> = ({ loggedInUser, templates, users, onLogout }) => {
     const [editingTemplate, setEditingTemplate] = useState<Template | 'new' | null>(null);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [activeTab, setActiveTab] = useState<'templates' | 'users'>('templates');
 
-    const handleSaveTemplate = (templateToSave: Template) => {
+    const handleSaveTemplate = async (templateToSave: Omit<Template, 'id'>) => {
         if (editingTemplate === 'new') {
-            setTemplates([...templates, templateToSave]);
+            await templatesCollection.add(templateToSave);
         } else {
-            setTemplates(templates.map(t => t.id === templateToSave.id ? templateToSave : t));
+            await templatesCollection.doc((editingTemplate as Template).id).update(templateToSave);
         }
         setEditingTemplate(null);
     };
 
-    const handleDeleteTemplate = (id: string) => {
+    const handleDeleteTemplate = async (id: string) => {
         if (window.confirm("هل أنت متأكد من حذف هذا القالب؟")) {
-            setTemplates(templates.filter(t => t.id !== id));
+            await templatesCollection.doc(id).delete();
         }
     };
     
-    const handlePasswordChange = (newPassword: string) => {
-        setUsers(users.map(u => u.username === loggedInUser.username ? { ...u, password: newPassword } : u));
+    const handlePasswordChange = async (newPassword: string) => {
+        await usersCollection.doc(loggedInUser.id).update({ password: newPassword });
     };
 
     if (editingTemplate) {
-        const templateData = editingTemplate === 'new'
-            ? { id: `template-${Date.now()}`, name: '', imageUrl: '', placeholders: [] }
+        const templateData: Omit<Template, 'id'> = editingTemplate === 'new'
+            ? { name: '', imageUrl: '', placeholders: [] }
             : templates.find(t => t.id === (editingTemplate as Template).id)!;
         
-        return <TemplateEditor template={templateData} onSave={handleSaveTemplate} onCancel={() => setEditingTemplate(null)} />;
+        return <TemplateEditor 
+            template={templateData} 
+            onSave={handleSaveTemplate} 
+            onCancel={() => setEditingTemplate(null)} 
+        />;
     }
 
     return (
@@ -481,7 +517,7 @@ const AdminView: React.FC<{
             )}
             
             {activeTab === 'users' && loggedInUser.role === 'super-admin' && (
-                <UserManagement users={users} setUsers={setUsers} />
+                <UserManagement users={users} />
             )}
         </div>
     );
@@ -489,12 +525,13 @@ const AdminView: React.FC<{
 
 
 // --- TEMPLATE EDITOR COMPONENT (for Admin) ---
-const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template) => void, onCancel: () => void }> = ({ template, onSave, onCancel }) => {
+const TemplateEditor: React.FC<{ template: Omit<Template, 'id'>, onSave: (template: Omit<Template, 'id'>) => Promise<void>, onCancel: () => void }> = ({ template, onSave, onCancel }) => {
     const [editedTemplate, setEditedTemplate] = useState(template);
     const [selectedPlaceholderId, setSelectedPlaceholderId] = useState<string | null>(template.placeholders[0]?.id || null);
     const editorImageRef = useRef<HTMLDivElement>(null);
     const [dragging, setDragging] = useState<{ id: string, offsetX: number, offsetY: number } | null>(null);
     const [imageAspectRatio, setImageAspectRatio] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const selectedPlaceholder = editedTemplate.placeholders.find(p => p.id === selectedPlaceholderId);
 
@@ -558,15 +595,12 @@ const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template
         const placeholderData = editedTemplate.placeholders.find(p => p.id === dragging.id);
         if (!placeholderEl || !placeholderData) return;
 
-        // Calculate new top-left position
         let x = e.clientX - editorRect.left - dragging.offsetX;
         let y = e.clientY - editorRect.top - dragging.offsetY;
         
-        // Clamp position to be within the editor bounds
         x = Math.max(0, Math.min(x, editorRect.width - placeholderEl.offsetWidth));
         y = Math.max(0, Math.min(y, editorRect.height - placeholderEl.offsetHeight));
 
-        // Convert top-left position to anchor point based on textAlign
         let anchorX = x;
         if (placeholderData.textAlign === 'center') {
             anchorX = x + placeholderEl.offsetWidth / 2;
@@ -574,10 +608,8 @@ const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template
             anchorX = x + placeholderEl.offsetWidth;
         }
         
-        // Vertical anchor is always middle
         const anchorY = y + placeholderEl.offsetHeight / 2;
 
-        // Convert anchor point to percentage of the editor dimensions
         const xPercent = (anchorX / editorRect.width) * 100;
         const yPercent = (anchorY / editorRect.height) * 100;
 
@@ -594,12 +626,19 @@ const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template
         else if (p.textAlign === 'right') tx = '-100%';
         return `translate(${tx}, -50%)`;
     };
+    
+    const handleSave = async () => {
+        setIsSaving(true);
+        await onSave(editedTemplate);
+        setIsSaving(false);
+    }
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto" onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-8">{template.id.startsWith('template-') ? 'تعديل القالب' : 'إنشاء قالب جديد'}</h2>
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-8">
+                {template.name ? 'تعديل القالب' : 'إنشاء قالب جديد'}
+            </h2>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Visual Editor */}
                 <div className="lg:col-span-2 bg-white p-4 rounded-2xl shadow-xl shadow-slate-200/70 border border-slate-200/80">
                      <h3 className="font-bold text-xl mb-4 tracking-tight">المحرر المرئي</h3>
                     <div 
@@ -636,9 +675,7 @@ const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template
                     </div>
                 </div>
 
-                {/* Controls */}
                 <div className="bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/70 border border-slate-200/80 space-y-6">
-                    {/* Template Details */}
                     <div className="space-y-4">
                         <h3 className="font-bold text-xl tracking-tight">تفاصيل القالب</h3>
                         <div>
@@ -653,7 +690,6 @@ const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template
 
                     <hr className="border-slate-200"/>
                     
-                    {/* Placeholders Section */}
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <h3 className="font-bold text-xl tracking-tight">النصوص</h3>
@@ -726,7 +762,7 @@ const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template
                         )}
                     </div>
                      <div className="flex gap-4 mt-4">
-                        <button onClick={() => onSave(editedTemplate)} className="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all">حفظ التغييرات</button>
+                        <button onClick={handleSave} disabled={isSaving} className="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all disabled:bg-slate-400">{isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'}</button>
                         <button onClick={onCancel} className="flex-1 bg-slate-200 text-slate-800 px-4 py-3 rounded-lg font-semibold hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 transition-all">إلغاء</button>
                     </div>
                 </div>
@@ -785,50 +821,42 @@ const LoginView: React.FC<{ onLogin: (username: string, password: string) => voi
 
 // --- MAIN APP COMPONENT ---
 const App: React.FC = () => {
-    const [templates, setTemplates] = useState<Template[]>(() => {
-        try {
-            const saved = localStorage.getItem(TEMPLATES_STORAGE_KEY);
-            return saved ? JSON.parse(saved) : [];
-        } catch (error) {
-            console.error("Could not parse templates from localStorage", error);
-            return [];
-        }
-    });
-
-    const [users, setUsers] = useState<User[]>(() => {
-        try {
-            const saved = localStorage.getItem(USERS_STORAGE_KEY);
-            const parsedUsers = saved ? JSON.parse(saved) : [];
-            // Ensure super-admin always exists and is correct
-            if (!parsedUsers.some((u: User) => u.username === DEFAULT_SUPER_ADMIN.username)) {
-                return [DEFAULT_SUPER_ADMIN, ...parsedUsers];
-            }
-             const finalUsers = parsedUsers.map((u: User) => u.username === DEFAULT_SUPER_ADMIN.username ? DEFAULT_SUPER_ADMIN : u);
-            return finalUsers;
-        } catch {
-            return [DEFAULT_SUPER_ADMIN];
-        }
-    });
+    const [templates, setTemplates] = useState<Template[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     
     const [view, setView] = useState<'user' | 'login'>('user');
     const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
     const [loginError, setLoginError] = useState('');
 
+    // Effect to fetch data from Firestore on initial load
     useEffect(() => {
-        try {
-            localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
-        } catch (error) {
-            console.error("Could not save templates to localStorage", error);
-        }
-    }, [templates]);
+        if (!firebaseConfig.apiKey) return;
 
-    useEffect(() => {
-        try {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-        } catch (error) {
-            console.error("Could not save users to localStorage", error);
-        }
-    }, [users]);
+        // Listener for templates
+        const unsubscribeTemplates = templatesCollection.onSnapshot(snapshot => {
+            const templatesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Template));
+            setTemplates(templatesData);
+            setIsLoading(false);
+        });
+
+        // Listener for users
+        const unsubscribeUsers = usersCollection.onSnapshot(async snapshot => {
+            if (snapshot.empty) {
+                // If no users exist, create the super-admin
+                await usersCollection.add({ username: 'admin', password: 'admin', role: 'super-admin' });
+            } else {
+                const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+                setUsers(usersData);
+            }
+        });
+
+        // Cleanup listeners on component unmount
+        return () => {
+            unsubscribeTemplates();
+            unsubscribeUsers();
+        };
+    }, []);
     
     const handleLogin = (username: string, password: string) => {
         const user = users.find(u => u.username === username && u.password === password);
@@ -847,13 +875,20 @@ const App: React.FC = () => {
     };
     
     const renderView = () => {
+        if (!firebaseConfig.apiKey) {
+            return (
+                <div className="p-8 text-center bg-red-100 text-red-800">
+                    <h2 className="text-2xl font-bold">خطأ في الإعداد</h2>
+                    <p className="mt-2">لم يتم العثور على إعدادات Firebase. الرجاء التأكد من لصق كائن `firebaseConfig` في ملف `App.tsx`.</p>
+                </div>
+            )
+        }
+        
         if (loggedInUser) {
             return <AdminView
                 loggedInUser={loggedInUser}
                 templates={templates}
-                setTemplates={setTemplates}
                 users={users}
-                setUsers={setUsers}
                 onLogout={handleLogout}
             />;
         }
@@ -863,7 +898,7 @@ const App: React.FC = () => {
                 return <LoginView onLogin={handleLogin} error={loginError} setError={setLoginError} />;
             case 'user':
             default:
-                return <UserView templates={templates} onAdminClick={() => setView('login')} />;
+                return <UserView templates={templates} onAdminClick={() => setView('login')} isLoading={isLoading} />;
         }
     };
 
