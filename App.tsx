@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // --- DATA TYPES ---
 interface TextPlaceholder {
@@ -97,7 +97,7 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
             }
              
             // Collect all unique fonts used in the template
-            const fontsToLoad = [...new Set(selectedTemplate.placeholders.map(p => ${p.fontWeight} 10px ))];
+            const fontsToLoad = [...new Set(selectedTemplate.placeholders.map(p => `${p.fontWeight} 10px ${p.fontFamily}`))];
 
             // Wait for all fonts to be loaded
             try {
@@ -114,7 +114,7 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
             
             selectedTemplate.placeholders.forEach(p => {
                 ctx.fillStyle = p.color;
-                ctx.font = ${p.fontWeight} px ;
+                ctx.font = `${p.fontWeight} ${canvas.width * (p.fontSize / 100)}px ${p.fontFamily}`;
                 ctx.textAlign = p.textAlign;
                 ctx.textBaseline = 'middle'; // Crucial for vertical alignment consistency
 
@@ -152,7 +152,7 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
         const canvas = canvasRef.current;
         if (!canvas) return;
         const link = document.createElement('a');
-        link.download = ${selectedTemplate?.name || 'greeting'}.png;
+        link.download = `${selectedTemplate?.name || 'greeting'}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
     };
@@ -185,7 +185,7 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
                                     type="text"
                                     value={userInputs[p.id] || ''}
                                     onChange={(e) => handleInputChange(p.id, e.target.value)}
-                                    placeholder={أدخل ...}
+                                    placeholder={`أدخل ${p.label}...`}
                                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500 transition"
                                 />
                             </div>
@@ -197,7 +197,7 @@ const UserView: React.FC<{ templates: Template[], onAdminClick: () => void }> = 
                         <h3 className="text-xl font-bold mb-4 text-center tracking-tight">المعاينة المباشرة</h3>
                         <div className="flex items-center justify-center min-h-[250px] bg-slate-100 rounded-xl">
                             {!loadedImage && <div className="text-slate-500">جاري تحميل الصورة...</div>}
-                            <canvas ref={canvasRef} className={w-full h-auto rounded-lg } />
+                            <canvas ref={canvasRef} className={`w-full h-auto rounded-lg ${!loadedImage ? 'hidden' : ''}`} />
                         </div>
                     </div>
 
@@ -326,7 +326,7 @@ const UserManagement: React.FC<{ users: User[], setUsers: (users: User[]) => voi
     };
 
     const handleDeleteUser = (username: string) => {
-        if (window.confirm(هل أنت متأكد من حذف المستخدم ''؟)) {
+        if (window.confirm(`هل أنت متأكد من حذف المستخدم '${username}'؟`)) {
             setUsers(users.filter(u => u.username !== username));
         }
     };
@@ -356,7 +356,7 @@ const UserManagement: React.FC<{ users: User[], setUsers: (users: User[]) => voi
                         <li key={user.username} className="p-4 flex flex-wrap items-center justify-between gap-4">
                             <div>
                                 <p className="font-semibold text-lg text-slate-800">{user.username}</p>
-                                <p className={	ext-sm font-semibold }>
+                                <p className={`text-sm font-semibold ${user.role === 'super-admin' ? 'text-indigo-600' : 'text-slate-500'}`}>
                                     {user.role === 'super-admin' ? 'مسؤول خارق' : 'مسؤول'}
                                 </p>
                             </div>
@@ -406,7 +406,7 @@ const AdminView: React.FC<{
 
     if (editingTemplate) {
         const templateData = editingTemplate === 'new'
-            ? { id: 	emplate-, name: '', imageUrl: '', placeholders: [] }
+            ? { id: `template-${Date.now()}`, name: '', imageUrl: '', placeholders: [] }
             : templates.find(t => t.id === (editingTemplate as Template).id)!;
         
         return <TemplateEditor template={templateData} onSave={handleSaveTemplate} onCancel={() => setEditingTemplate(null)} />;
@@ -439,11 +439,11 @@ const AdminView: React.FC<{
             {loggedInUser.role === 'super-admin' && (
                 <div className="mb-8 border-b border-gray-200">
                     <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-                         <button onClick={() => setActiveTab('templates')} className={group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-lg }>
+                         <button onClick={() => setActiveTab('templates')} className={`group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'templates' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <TemplateIcon className="w-6 h-6" />
                             <span>إدارة القوالب</span>
                         </button>
-                        <button onClick={() => setActiveTab('users')} className={group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-lg }>
+                        <button onClick={() => setActiveTab('users')} className={`group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'users' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                             <UsersIcon className="w-6 h-6" />
                             <span>إدارة المستخدمين</span>
                         </button>
@@ -507,7 +507,7 @@ const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template
             const img = new Image();
             img.src = editedTemplate.imageUrl;
             img.onload = () => {
-                setImageAspectRatio(${img.naturalWidth} / );
+                setImageAspectRatio(`${img.naturalWidth} / ${img.naturalHeight}`);
             };
         }
     }, [editedTemplate.imageUrl]);
@@ -521,7 +521,7 @@ const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template
     
     const handleAddPlaceholder = () => {
         const newPlaceholder: TextPlaceholder = {
-            id: p-,
+            id: `p-${Date.now()}`,
             label: 'نص جديد',
             x: 50, y: 50, fontSize: 5, color: '#FFFFFF',
             textAlign: 'center', fontFamily: 'Cairo', fontWeight: '700'
@@ -595,7 +595,7 @@ const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template
         let tx = '0%';
         if (p.textAlign === 'center') tx = '-50%';
         else if (p.textAlign === 'right') tx = '-100%';
-        return 	ranslate(, -50%);
+        return `translate(${tx}, -50%)`;
     };
 
     return (
@@ -619,12 +619,12 @@ const TemplateEditor: React.FC<{ template: Template, onSave: (template: Template
                                     id={p.id}
                                     onMouseDown={(e) => onMouseDown(e, p.id)}
                                     onClick={() => setSelectedPlaceholderId(p.id)}
-                                    className={bsolute p-1 rounded transition-all duration-150  }
+                                    className={`absolute p-1 rounded transition-all duration-150 ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-800/50' : 'outline-dashed outline-1 outline-white/50 hover:outline-indigo-400'} ${dragging?.id === p.id ? 'grabbing-cursor shadow-2xl z-10' : 'grab-cursor'}`}
                                     style={{
-                                        left: ${p.x}%,
-                                        top: ${p.y}%,
+                                        left: `${p.x}%`,
+                                        top: `${p.y}%`,
                                         transform: getPlaceholderTransform(p),
-                                        fontSize: ${(p.fontSize / 100) * (editorImageRef.current?.clientWidth || 500)}px,
+                                        fontSize: `${(p.fontSize / 100) * (editorImageRef.current?.clientWidth || 500)}px`,
                                         color: p.color,
                                         fontFamily: p.fontFamily,
                                         fontWeight: p.fontWeight,
